@@ -17,9 +17,9 @@ function EditProfesorModal({ open, onClose, profesor, onUpdated }) {
     if (!/^\d{10}$/.test(c)) return false;
     const provincia = parseInt(c.slice(0, 2), 10);
     const tercer = parseInt(c[2], 10);
-    if (provincia < 1 || provincia > 24) return false; // provincias 01–24
-    if (tercer >= 6) return false; // natural < 6
-    const coef = [2,1,2,1,2,1,2,1,2]; // para los 9 primeros
+    if (provincia < 1 || provincia > 24) return false;
+    if (tercer >= 6) return false;
+    const coef = [2, 1, 2, 1, 2, 1, 2, 1, 2];
     let suma = 0;
     for (let i = 0; i < 9; i++) {
       let val = coef[i] * parseInt(c[i], 10);
@@ -54,6 +54,7 @@ function EditProfesorModal({ open, onClose, profesor, onUpdated }) {
     return !nombresError && !cedulaError && nombres && cedula;
   }, [nombres, cedula]);
 
+  // Carga datos al abrir
   useEffect(() => {
     if (profesor && open) {
       setNombres(profesor.nombres || "");
@@ -63,20 +64,29 @@ function EditProfesorModal({ open, onClose, profesor, onUpdated }) {
     }
   }, [profesor, open]);
 
+  // Bloquear scroll del body cuando el modal esté abierto
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   const handleBlur = (e) => {
     const { name, value } = e.target;
-    setTouched(prev => ({ ...prev, [name]: true }));
+    setTouched((prev) => ({ ...prev, [name]: true }));
     const error = validateField(name, value);
-    setErrors(prev => ({ ...prev, [name]: error }));
+    setErrors((prev) => ({ ...prev, [name]: error }));
   };
 
   const handleUpdate = async () => {
     if (!profesor?.id) return;
 
-    // Validar todos los campos
     const nombresError = validateField("nombres", nombres);
     const cedulaError = validateField("cedula", cedula);
-    
+
     setErrors({ nombres: nombresError, cedula: cedulaError });
     setTouched({ nombres: true, cedula: true });
 
@@ -91,12 +101,10 @@ function EditProfesorModal({ open, onClose, profesor, onUpdated }) {
         nombres: nombres.trim(),
         cedula: cedula.trim(),
       };
-      
-      // Cambiar el método de `PUT` a `PATCH` para que coincida con el backend
       const res = await api.patch(`/profesores/${profesor.id}`, payload);
       toast.success("Profesor actualizado");
-      onUpdated?.(profesor.id, res.data); // Actualizar la lista en el frontend
-      onClose?.(); // Cerrar el modal
+      onUpdated?.(profesor.id, res.data);
+      onClose?.();
     } catch (e) {
       console.error(e);
       const msg =
@@ -109,75 +117,162 @@ function EditProfesorModal({ open, onClose, profesor, onUpdated }) {
     }
   };
 
+  const onKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (!loading) handleUpdate();
+    }
+    if (e.key === "Escape" && !loading) {
+      onClose?.();
+    }
+  };
+
+  // Cerrar al hacer click fuera del contenido
+  const handleOverlayClick = (e) => {
+    if (e.target === e.currentTarget && !loading) onClose?.();
+  };
+
   if (!open) return null;
 
   return (
-    <div className="modal show d-block" tabIndex="-1">
+    // Overlay controlado SIN usar .modal-backdrop manual
+    <div
+      className="modal show d-block"
+      tabIndex="-1"
+      role="dialog"
+      aria-modal="true"
+      onKeyDown={onKeyDown}
+      onClick={handleOverlayClick}
+      style={{
+        position: "fixed",
+        inset: 0,
+        display: "grid",
+        placeItems: "center",
+        backgroundColor: "rgba(0,0,0,0.35)", // ✅ sombra translúcida (no pantalla blanca)
+        backdropFilter: "blur(2px)",         // ✅ efecto vidrio sutil
+        zIndex: 1050,
+      }}
+    >
       <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h1 className="modal-title fs-5"><b>Editar profesor</b></h1>
-            <button 
-              type="button"
-              className="btn-close" 
-              onClick={onClose}
-              disabled={loading}
-            ></button>
-          </div>
-          <div className="modal-body">
-            <div className="mb-3">
-              <label className="form-label">Nombres *</label>
-              <input
-                type="text"
-                className={`form-control ${touched.nombres && errors.nombres ? "is-invalid" : ""}`}
-                name="nombres"
-                value={nombres}
-                onChange={(e) => setNombres(e.target.value)}
-                onBlur={handleBlur}
-                placeholder="Ej: Juan Pérez"
-              />
-              {touched.nombres && errors.nombres && (
-                <div className="invalid-feedback">{errors.nombres}</div>
-              )}
+        <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+          {/* Header estilizado */}
+          <div
+            className="modal-header border-0"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(13,110,253,.95), rgba(32,201,151,.95))",
+              color: "white",
+            }}
+          >
+            <div>
+              <h1 className="modal-title fs-5 mb-1">
+                <b>Editar profesor</b>
+              </h1>
+              <small className="opacity-75">
+                ID: <b>{profesor?.id ?? "-"}</b>
+              </small>
             </div>
 
-            <div className="mb-3">
-              <label className="form-label">Cédula *</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={10}
-                className={`form-control ${touched.cedula && errors.cedula ? "is-invalid" : ""}`}
-                name="cedula"
-                value={cedula}
-                onChange={(e) => setCedula(e.target.value.replace(/\D/g, ""))}
-                onBlur={handleBlur}
-                placeholder="10 dígitos"
-              />
-              {touched.cedula && errors.cedula && (
-                <div className="invalid-feedback">{errors.cedula}</div>
-              )}
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button 
+            <button
               type="button"
-              className="btn btn-secondary" 
+              className="btn-close btn-close-white"
+              aria-label="Cerrar"
               onClick={onClose}
               disabled={loading}
-            >
-              Cancelar
-            </button>
-            <button 
-              type="button"
-              className="btn btn-primary" 
-              onClick={handleUpdate} 
-              disabled={loading || !isFormValid}
-            >
-              <b>{loading ? "Guardando..." : "Guardar cambios"}</b>
-            </button>
+            />
+          </div>
+
+          {/* Body con layout limpio */}
+          <div className="modal-body bg-light">
+            <div className="row g-3">
+              <div className="col-12">
+                <label className="form-label fw-semibold">Nombres *</label>
+                <div className="input-group">
+                  <span className="input-group-text">👤</span>
+                  <input
+                    type="text"
+                    className={`form-control ${
+                      touched.nombres && errors.nombres ? "is-invalid" : ""
+                    }`}
+                    name="nombres"
+                    value={nombres}
+                    onChange={(e) => setNombres(e.target.value)}
+                    onBlur={handleBlur}
+                    placeholder="Ej: Juan Pérez"
+                    autoFocus
+                    autoComplete="off"
+                  />
+                  {touched.nombres && errors.nombres && (
+                    <div className="invalid-feedback">{errors.nombres}</div>
+                  )}
+                </div>
+                <div className="form-text">
+                  Debe iniciar con mayúscula. Se permiten letras, espacios,
+                  apóstrofes y guiones.
+                </div>
+              </div>
+
+              <div className="col-12">
+                <label className="form-label fw-semibold">Cédula *</label>
+                <div className="input-group">
+                  <span className="input-group-text">🪪</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={10}
+                    className={`form-control ${
+                      touched.cedula && errors.cedula ? "is-invalid" : ""
+                    }`}
+                    name="cedula"
+                    value={cedula}
+                    onChange={(e) =>
+                      setCedula(e.target.value.replace(/\D/g, ""))
+                    }
+                    onBlur={handleBlur}
+                    placeholder="10 dígitos"
+                    autoComplete="off"
+                  />
+                  {touched.cedula && errors.cedula && (
+                    <div className="invalid-feedback">{errors.cedula}</div>
+                  )}
+                </div>
+                <div className="form-text">
+                  Se valida provincia, tipo y dígito verificador (Ecuador).
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer con acciones claras */}
+          <div className="modal-footer bg-light border-0 pt-0">
+            <div className="d-flex w-100 justify-content-between align-items-center">
+              <span className="small text-muted">
+                {loading ? "Procesando…" : "Campos obligatorios (*)"}
+              </span>
+              <div className="d-flex gap-2">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={onClose}
+                  disabled={loading}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleUpdate}
+                  disabled={loading || !isFormValid}
+                >
+                  <b>{loading ? "Guardando..." : "Guardar cambios"}</b>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Espaciado inferior para evitar que pegue al borde en pantallas chicas */}
+        <div className="py-1" />
       </div>
     </div>
   );
