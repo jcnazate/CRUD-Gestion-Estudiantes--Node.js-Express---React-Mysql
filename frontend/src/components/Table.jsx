@@ -57,9 +57,11 @@ function Table() {
       <div className="container mt-5">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h1 id="h1" className="mb-0">Gestión de Estudiantes</h1>
-          <button className="btn btn-outline-secondary btn-sm" onClick={logout}>
+          <button 
+          className="btn btn-danger btn-sm shadow" onClick={logout}>
             Cerrar sesión
-          </button>
+            </button>
+
         </div>
 
         <div className="d-flex gap-2 mb-3">
@@ -67,7 +69,7 @@ function Table() {
         </div>
 
         {users.length === 0 ? (
-          <h3 id="h3">No se encontraron estudiantes en la BD</h3>
+          <h3 id="h3">No se encontraron estudiantes en la Base De Datos</h3>
         ) : (
           <table className="table table-bordered table-hover">
             <thead className="thead-dark">

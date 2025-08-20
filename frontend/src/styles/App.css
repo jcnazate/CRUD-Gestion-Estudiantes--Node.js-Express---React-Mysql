@@ -1,8 +1,44 @@
-#h1, #h3 {
-    text-align: center;
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+
+  /* Fondo con imagen */
+  background-image: url('./img/login.jpg');
+  background-size: cover;         /* Ajusta la imagen a toda la pantalla */
+  background-position: center;    /* Centra la imagen */
+  background-repeat: no-repeat;   /* Evita que se repita */
+  height: 100vh;                  /* Ocupa toda la altura de la ventana */
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-#button {
-    display: block !important;
-    margin: 2rem auto !important;
+/* Para darle un efecto de transparencia a tu contenido */
+/* Ajuste responsivo para la tabla */
+.container {
+  background: rgba(255, 255, 255, 0.496); 
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  max-width: 95%;          /* Evita que se desborde del body */
+  margin: auto;            /* Centra el contenedor */
+  overflow-x: auto;        /* Scroll horizontal si la tabla es muy grande */
+}
+
+/* Estilos para la tabla */
+table {
+  width: 100%;             /* Ocupar el 100% del contenedor */
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 10px;
+  text-align: center;
+  word-wrap: break-word;   /* Permite cortar texto largo */
+}
+
+/* Opcional: que las celdas se adapten */
+table {
+  table-layout: auto;      /* Se adapta al contenido */
 }
