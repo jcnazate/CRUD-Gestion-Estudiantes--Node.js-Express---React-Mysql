@@ -32,6 +32,7 @@ const ConnectDB = async () => {
   });
 
   // 4. Crea las tablas como antes
+  // tabla de estudiante
   await pool.query(`CREATE TABLE IF NOT EXISTS \`${process.env.DB_TABLENAME}\` (
         id INT AUTO_INCREMENT PRIMARY KEY,
         nombre_completo VARCHAR(100) NOT NULL,
@@ -89,24 +90,6 @@ const ConnectDB = async () => {
       ON DELETE CASCADE ON UPDATE CASCADE
   )`);
   console.log(`estudiante_materia table created or already exists.`);
-
-  // Crear tabla estudiantes
-  await pool.query(`CREATE TABLE IF NOT EXISTS estudiantes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nombre_completo VARCHAR(255) NOT NULL,
-    matricula VARCHAR(50) NOT NULL UNIQUE,
-    email VARCHAR(255) NOT NULL UNIQUE
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
-  console.log('estudiantes table created or already exists.');
-
-  // Insertar datos de prueba solo si la tabla está vacía
-  const [rows] = await pool.query('SELECT COUNT(*) as count FROM estudiantes');
-  if (rows[0].count === 0) {
-    await pool.query(`INSERT INTO estudiantes (nombre_completo, matricula, email) VALUES
-      ('Juan Pérez', '12345', 'juan@example.com'),
-      ('María López', '67890', 'maria@example.com')`);
-    console.log('Test data inserted into estudiantes table.');
-  }
 
   return pool;
 }
