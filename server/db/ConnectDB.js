@@ -1,8 +1,8 @@
 const mysql = require("mysql2/promise");
 
 const ConnectDB = async () => {
-  // 1. Conéctate sin especificar database
-  const pool = await mysql.createPool({
+  // 1. Crear pool temporal para crear la base de datos si no existe
+  const poolTmp = await mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
@@ -13,14 +13,23 @@ const ConnectDB = async () => {
   });
 
   // 2. Crea la base de datos si no existe
-  await pool.query(
+  await poolTmp.query(
     `CREATE DATABASE IF NOT EXISTS \`${process.env.DB_DATABASE}\``
   );
   console.log(`Database ${process.env.DB_DATABASE} created or already exists.`);
+  await poolTmp.end();
 
-  // 3. Cambia el pool para usar la base de datos
-  await pool.query(`USE \`${process.env.DB_DATABASE}\``);
-  console.log(`Switched to database ${process.env.DB_DATABASE}`);
+  // 3. Crear pool principal usando la base de datos
+  const pool = await mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
+    port: process.env.DB_PORT,
+    waitForConnections: process.env.DB_WAITFORCONNECTIONS,
+    connectionLimit: process.env.DB_CONNECTIONLIMIT,
+    queueLimit: process.env.DB_QUEUELIMIT
+  });
 
   // 4. Crea las tablas como antes
   await pool.query(`CREATE TABLE IF NOT EXISTS \`${process.env.DB_TABLENAME}\` (
@@ -39,10 +48,8 @@ const ConnectDB = async () => {
         direccion VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
-
-
-    
   console.log(`${process.env.DB_TABLENAME} table created or already exists.`);
+
   await pool.query(`CREATE TABLE IF NOT EXISTS auth_users (
         id INT AUTO_INCREMENT PRIMARY KEY,
         email VARCHAR(100) NOT NULL UNIQUE,
@@ -51,7 +58,39 @@ const ConnectDB = async () => {
     )`);
   console.log(`auth_users table created or already exists.`);
 
+  // Tabla profesores
+  await pool.query(`CREATE TABLE IF NOT EXISTS profesores (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombres VARCHAR(100) NOT NULL,
+    cedula VARCHAR(20) NOT NULL UNIQUE
+  )`);
+  console.log(`profesores table created or already exists.`);
+
+  // Tabla materias (asignada a un profesor)
+  await pool.query(`CREATE TABLE IF NOT EXISTS materias (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    creditos INT NOT NULL,
+    horas INT NOT NULL,
+    profesor_id INT,
+    FOREIGN KEY (profesor_id) REFERENCES profesores(id)
+      ON DELETE SET NULL ON UPDATE CASCADE
+  )`);
+  console.log(`materias table created or already exists.`);
+
+  // Tabla intermedia estudiante_materia (muchos a muchos)
+  await pool.query(`CREATE TABLE IF NOT EXISTS estudiante_materia (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    estudiante_id INT NOT NULL,
+    materia_id INT NOT NULL,
+    FOREIGN KEY (estudiante_id) REFERENCES ${process.env.DB_TABLENAME}(id)
+      ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (materia_id) REFERENCES materias(id)
+      ON DELETE CASCADE ON UPDATE CASCADE
+  )`);
+  console.log(`estudiante_materia table created or already exists.`);
+
   return pool;
-};
+}
 
 module.exports = ConnectDB;

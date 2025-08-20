@@ -1,3 +1,39 @@
+/* Estilos para modales */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: #fff;
+  padding: 2rem 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.2);
+  min-width: 320px;
+  max-width: 90vw;
+}
+
+.modal input, .modal select, .modal button {
+  margin: 0.5rem 0;
+  display: block;
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+
+.modal button {
+  width: auto;
+  margin-right: 0.5rem;
+  display: inline-block;
+}
 body {
   margin: 0;
   padding: 0;
