@@ -266,6 +266,81 @@ router.post("/profesores", requireAuth, async (req, res) => {
   }
 });
 
+// ---- ACTUALIZAR PROFESOR (MEJORADO) ----
+router.patch("/profesores/:id", requireAuth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const { nombres, cedula } = req.body;
+  
+  if (!id || isNaN(id)) {
+    return res.status(400).json({ message: "ID inválido" });
+  }
+  
+  if (!nombres && !cedula) {
+    return res.status(400).json({ message: "Datos incompletos" });
+  }
+
+  try {
+    // Verificar que el profesor existe primero
+    const [existingProfesor] = await req.pool.query(
+      `SELECT id FROM profesores WHERE id = ?`, 
+      [id]
+    );
+    
+    if (!existingProfesor.length) {
+      return res.status(404).json({ message: "Profesor no encontrado" });
+    }
+
+    // Construir query de forma segura
+    const updates = [];
+    const values = [];
+    
+    if (nombres) {
+      updates.push(`nombres = ?`);
+      values.push(nombres);
+    }
+    if (cedula) {
+      updates.push(`cedula = ?`);
+      values.push(cedula);
+    }
+    
+    values.push(id); // Para el WHERE
+    
+    const query = `UPDATE profesores SET ${updates.join(", ")} WHERE id = ?`;
+    
+    await req.pool.query(query, values);
+    
+    // Obtener el profesor actualizado
+    const [updatedProfesor] = await req.pool.query(
+      `SELECT * FROM profesores WHERE id = ?`, 
+      [id]
+    );
+    
+    console.log('✅ Profesor actualizado:', updatedProfesor[0]);
+    res.json(updatedProfesor[0]);
+    
+  } catch (err) {
+    console.error("❌ Error updating profesor:", err);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
+// ---- ELIMINAR PROFESOR ----
+router.delete("/profesores/:id", requireAuth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ message: "ID inválido" });
+
+  try {
+    const [row] = await req.pool.query(`SELECT id FROM profesores WHERE id = ?`, [id]);
+    if (!row.length) return res.status(404).json({ message: "No existe" });
+
+    await req.pool.query(`DELETE FROM profesores WHERE id = ?`, [id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Error deleting profesor:", err);
+    res.status(500).send("Internal server error");
+  }
+});
+
 // ---- CRUD MATERIAS ----
 router.get("/materias", requireAuth, async (req, res) => {
   try {
@@ -294,3 +369,191 @@ router.post("/materias", requireAuth, async (req, res) => {
     res.status(500).send("Internal server error");
   }
 });
+
+// ---- ACTUALIZAR MATERIA ----
+router.patch("/materias/:id", requireAuth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ message: "ID inválido" });
+
+  const { nombre, creditos, horas, profesor_id } = req.body;
+  if (!nombre && !creditos && !horas && profesor_id === undefined) {
+    return res.status(400).json({ message: "Datos incompletos" });
+  }
+
+  try {
+    const updates = [];
+    const values = [];
+    if (nombre) {
+      updates.push("nombre = ?");
+      values.push(nombre);
+    }
+    if (creditos) {
+      updates.push("creditos = ?");
+      values.push(creditos);
+    }
+    if (horas) {
+      updates.push("horas = ?");
+      values.push(horas);
+    }
+    if (profesor_id !== undefined) {
+      updates.push("profesor_id = ?");
+      values.push(profesor_id || null);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ message: "Sin cambios" });
+    }
+
+    values.push(id); // Para el WHERE
+    const setClause = updates.join(", ");
+    await req.pool.query(`UPDATE materias SET ${setClause} WHERE id = ?`, values);
+
+    const [row] = await req.pool.query(
+      `SELECT m.*, p.nombres as profesor_nombre, p.cedula as profesor_cedula 
+       FROM materias m 
+       LEFT JOIN profesores p ON m.profesor_id = p.id 
+       WHERE m.id = ?`,
+      [id]
+    );
+    if (!row.length) return res.status(404).json({ message: "No existe" });
+    res.json(row[0]);
+  } catch (err) {
+    console.error("Error updating materia:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// ---- ELIMINAR MATERIA ----
+router.delete("/materias/:id", requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id <= 0) {
+    return res.status(400).json({ message: "ID inválido" });
+  }
+
+  try {
+    console.log("[DELETE /materias/:id] id:", id);
+
+    // Borra directamente y revisa affectedRows
+    const [del] = await req.pool.query("DELETE FROM materias WHERE id = ?", [id]);
+    console.log("[DELETE /materias/:id] affectedRows:", del?.affectedRows);
+
+    if (!del || del.affectedRows === 0) {
+      // No se borró nada -> no existía
+      return res.status(404).json({ message: "No existe" });
+    }
+
+    return res.json({ ok: true, id });
+  } catch (err) {
+    // Si hay FK en estudiante_materia te daría un error tipo ER_ROW_IS_REFERENCED_2
+    console.error("Error deleting materia:", err);
+    // Podrías mapear FK para dar un mensaje más claro:
+    if (err?.code === "ER_ROW_IS_REFERENCED_2" || err?.errno === 1451) {
+      return res.status(409).json({ message: "No se puede eliminar: está referenciada." });
+    }
+    return res.status(500).send("Internal server error");
+  }
+});
+// GET /estudiantes - Obtener todos los estudiantes
+router.get("/estudiantes", requireAuth, async (req, res) => {
+  try {
+    console.log("[GET /estudiantes] Solicitud recibida");
+    const [rows] = await req.pool.query(
+      `SELECT id, nombre_completo, matricula, email FROM estudiantes ORDER BY nombre_completo`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("[GET /estudiantes] Error:", err);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
+// GET /estudiantes/:id/materias - Obtener materias asignadas a un estudiante
+router.get("/estudiantes/:id/materias", requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id <= 0) {
+    return res.status(400).json({ message: "ID de estudiante inválido" });
+  }
+
+  try {
+    console.log("[GET /estudiantes/:id/materias] Solicitud recibida, id:", id);
+    const [rows] = await req.pool.query(
+      `SELECT m.id, m.nombre, m.creditos, m.horas, p.nombres AS profesor_nombre
+       FROM estudiante_materia em
+       JOIN materias m ON em.materia_id = m.id
+       LEFT JOIN profesores p ON m.profesor_id = p.id
+       WHERE em.estudiante_id = ?
+       ORDER BY m.nombre`,
+      [id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("[GET /estudiantes/:id/materias] Error:", err);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
+// POST /estudiantes/:id/materias - Asignar una materia a un estudiante
+router.post("/estudiantes/:id/materias", requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  const { materia_id } = req.body;
+  if (!Number.isFinite(id) || id <= 0 || !Number.isFinite(materia_id) || materia_id <= 0) {
+    return res.status(400).json({ message: "ID de estudiante o materia inválido" });
+  }
+
+  try {
+    console.log("[POST /estudiantes/:id/materias] Solicitud recibida, estudiante_id:", id, "materia_id:", materia_id);
+    // Verificar que el estudiante y la materia existan
+    const [estudiante] = await req.pool.query(`SELECT id FROM estudiantes WHERE id = ?`, [id]);
+    const [materia] = await req.pool.query(`SELECT id FROM materias WHERE id = ?`, [materia_id]);
+    if (!estudiante.length || !materia.length) {
+      return res.status(404).json({ message: "Estudiante o materia no encontrado" });
+    }
+
+    // Verificar que la materia no esté ya asignada
+    const [existing] = await req.pool.query(
+      `SELECT * FROM estudiante_materia WHERE estudiante_id = ? AND materia_id = ?`,
+      [id, materia_id]
+    );
+    if (existing.length) {
+      return res.status(409).json({ message: "La materia ya está asignada a este estudiante" });
+    }
+
+    await req.pool.query(
+      `INSERT INTO estudiante_materia (estudiante_id, materia_id) VALUES (?, ?)`,
+      [id, materia_id]
+    );
+    res.status(201).json({ ok: true });
+  } catch (err) {
+    console.error("[POST /estudiantes/:id/materias] Error:", err);
+    if (err?.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({ message: "La materia ya está asignada a este estudiante" });
+    }
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
+// DELETE /estudiantes/:id/materias/:materia_id - Quitar una materia asignada a un estudiante
+router.delete("/estudiantes/:id/materias/:materia_id", requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  const materia_id = Number(req.params.materia_id);
+  if (!Number.isFinite(id) || id <= 0 || !Number.isFinite(materia_id) || materia_id <= 0) {
+    return res.status(400).json({ message: "ID de estudiante o materia inválido" });
+  }
+
+  try {
+    console.log("[DELETE /estudiantes/:id/materias/:materia_id] Solicitud recibida, estudiante_id:", id, "materia_id:", materia_id);
+    const [result] = await req.pool.query(
+      `DELETE FROM estudiante_materia WHERE estudiante_id = ? AND materia_id = ?`,
+      [id, materia_id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Asignación no encontrada" });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[DELETE /estudiantes/:id/materias/:materia_id] Error:", err);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
+module.exports = router;

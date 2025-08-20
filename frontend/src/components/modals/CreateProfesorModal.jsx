@@ -1,9 +1,9 @@
 // frontend/src/components/modals/CreateProfesorModal.jsx
-import { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { api } from "../../lib/api";
 
-function CreateProfesorModal({ addProfesor }) {
+function CreateProfesorModal({ open, onClose, addProfesor }) {
   const [nombres, setNombres] = useState("");
   const [cedula, setCedula] = useState("");
   const [loading, setLoading] = useState(false);
@@ -108,9 +108,7 @@ function CreateProfesorModal({ addProfesor }) {
         toast.success("Profesor creado");
         if (typeof addProfesor === "function") addProfesor(res.data);
         reset();
-        // cerrar modal Bootstrap
-        const modalEl = document.getElementById("CreateProfesorModal");
-        if (modalEl) modalEl.dispatchEvent(new Event("hide.bs.modal"));
+        onClose(); // Cerrar modal
       } else {
         toast.error("No se pudo crear el profesor");
       }
@@ -128,41 +126,23 @@ function CreateProfesorModal({ addProfesor }) {
 
   const invalid = (field) => touched[field] && errors[field];
 
+  if (!open) return null;
+
   return (
-    <>
-      <button
-        type="button"
-        className="btn btn-primary"
-        data-bs-toggle="modal"
-        id="button"
-        data-bs-target="#CreateProfesorModal"
-      >
-        <b>Crear profesor</b>
-      </button>
-
-      <div
-        className="modal fade"
-        id="CreateProfesorModal"
-        tabIndex="-1"
-        aria-labelledby="CreateProfesorModalLabel"
-        aria-hidden="true"
-      >
-        <div className="modal-dialog modal-dialog-centered">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h1 className="modal-title fs-5" id="CreateProfesorModalLabel">
-                <b>Datos del profesor</b>
-              </h1>
-              <button
-                type="button"
-                className="btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-                disabled={loading}
-              />
-            </div>
-
-            <div className="modal-body">
+    <div className="modal show d-block" tabIndex="-1">
+      <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title">Crear Profesor</h5>
+            <button
+              type="button"
+              className="btn-close"
+              onClick={onClose}
+              disabled={loading}
+            ></button>
+          </div>
+          <div className="modal-body">
+            <form onSubmit={handleCreateProfesor}>
               {/* NOMBRES */}
               <div className="mb-3">
                 <label htmlFor="nombres" className="form-label">
@@ -177,6 +157,7 @@ function CreateProfesorModal({ addProfesor }) {
                   value={nombres}
                   onChange={(e) => setNombres(e.target.value)}
                   onBlur={handleBlur}
+                  required
                 />
                 {invalid("nombres") && (
                   <div className="invalid-feedback">{errors.nombres}</div>
@@ -199,29 +180,37 @@ function CreateProfesorModal({ addProfesor }) {
                   value={cedula}
                   onChange={(e) => setCedula(e.target.value.replace(/\D/g, ""))}
                   onBlur={handleBlur}
+                  required
                 />
                 {invalid("cedula") && (
                   <div className="invalid-feedback">{errors.cedula}</div>
                 )}
               </div>
-            </div>
 
-            <div className="modal-footer">
-              <button
-                type="button"
-                className="btn btn-success"
-                onClick={handleCreateProfesor}
-                data-bs-dismiss={loading || !isFormValid ? undefined : "modal"}
-                disabled={loading || !isFormValid}
-              >
-                <b>{loading ? "Guardando..." : "Crear profesor"}</b>
-              </button>
-            </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={onClose}
+                  disabled={loading}
+                >
+                  Cerrar
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={loading || !isFormValid}
+                >
+                  <b>{loading ? "Guardando..." : "Crear profesor"}</b>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
 export default CreateProfesorModal;
+                

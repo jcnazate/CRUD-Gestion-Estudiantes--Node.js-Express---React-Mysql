@@ -1,8 +1,10 @@
 // frontend/src/components/modals/DeleteProfesorModal.jsx
 import React, { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { api } from "../../lib/api";
+import { toast } from "sonner";
 
-function DeleteProfesorModal({ open, onClose, onDelete, profesor }) {
+function DeleteProfesorModal({ open, onClose, profesor, onDeleted }) {
   const firstButtonRef = useRef(null);
 
   useEffect(() => {
@@ -28,6 +30,17 @@ function DeleteProfesorModal({ open, onClose, onDelete, profesor }) {
       clearTimeout(t);
     };
   }, [open, onClose]);
+
+  const handleDeleteProfesor = async () => {
+    try {
+      await api.delete(`/profesores/${profesor.id}`);
+      onDeleted(profesor.id);
+      toast.success("Profesor eliminado exitosamente");
+      onClose(); // Cerrar modal
+    } catch (error) {
+      toast.error("Error al eliminar profesor");
+    }
+  };
 
   if (!open) return null;
 
@@ -73,7 +86,7 @@ function DeleteProfesorModal({ open, onClose, onDelete, profesor }) {
             ref={firstButtonRef}
             type="button"
             className="btn btn-danger"
-            onClick={onDelete}
+            onClick={handleDeleteProfesor}
           >
             Eliminar
           </button>
