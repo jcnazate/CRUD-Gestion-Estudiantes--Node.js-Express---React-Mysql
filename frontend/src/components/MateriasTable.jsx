@@ -62,70 +62,99 @@ function MateriasTable() {
   return (
     <>
       <Toaster richColors closeButton />
-      <div className="container mt-5">
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h1 className="mb-0">Gestión de Materias</h1>
-          <button
-            className="btn btn-primary btn-sm shadow"
-            onClick={() => {
-              console.log("[MateriasTable] abrir modal crear");
-              setModalCreateOpen(true);
+      
+      <div className="container py-4">
+        <div className="card border-0 shadow-lg rounded-4 overflow-hidden">
+          {/* Header con gradiente */}
+          <div
+            className="p-3 d-flex justify-content-between align-items-center"
+            style={{
+              background: "linear-gradient(135deg, rgba(13,110,253,.95), rgba(32,201,151,.95))",
+              color: "white",
             }}
           >
-            Crear Materias
-          </button>
-        </div>
+            <div>
+              <h3 className="mb-0">Gestión de Materias</h3>
+              <small className="opacity-75">
+                Crea, edita y elimina registros de materias.
+              </small>
+            </div>
 
-        {materias.length === 0 ? (
-          <h3>No se encontraron materias en la Base De Datos</h3>
-        ) : (
-          <table className="table table-bordered table-hover">
-            <thead className="thead-dark">
-              <tr>
-                <th>Id</th>
-                <th>Nombre</th>
-                <th>Créditos</th>
-                <th>Horas</th>
-                <th>Profesor</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {materias.map((m) => (
-                <tr key={m.id}>
-                  <td>{m.id}</td>
-                  <td>{m.nombre}</td>
-                  <td>{m.creditos}</td>
-                  <td>{m.horas}</td>
-                  <td>{m.profesor_nombre || "Sin asignar"}</td>
-                  <td className="text-nowrap">
-                    <button
-                      className="btn btn-sm btn-warning me-2"
-                      onClick={() => {
-                        console.log("[MateriasTable] editar", m);
-                        setSelectedMateria(m);
-                        setModalEditOpen(true);
-                      }}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      className="btn btn-sm btn-danger"
-                      onClick={() => {
-                        console.log("[MateriasTable] eliminar", m);
-                        setSelectedForDelete(m);
-                        setModalDeleteOpen(true);
-                      }}
-                      disabled={!materias.find((mat) => mat.id === m.id)} // Deshabilitar si la materia no existe
-                    >
-                      Eliminar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+            <div>
+              <button
+                className="btn btn-success"
+                onClick={() => setModalCreateOpen(true)}
+              >
+                <b>Crear materia</b>
+              </button>
+            </div>
+          </div>
+
+          <div className="card-body bg-light">
+            {materias.length === 0 ? (
+              <h5 className="text-muted">No se encontraron materias en la Base de Datos</h5>
+            ) : (
+              <div
+                className="table-responsive"
+                style={{
+                  overflowX: "auto",
+                  WebkitOverflowScrolling: "touch",
+                }}
+              >
+                <table className="table table-bordered table-hover mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Id</th>
+                      <th>Nombre</th>
+                      <th>Créditos</th>
+                      <th>Horas</th>
+                      <th>Profesor</th>
+                      <th style={{ whiteSpace: "nowrap" }}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {materias.map((m) => (
+                      <tr key={m.id}>
+                        <td>{m.id}</td>
+                        <td style={{ minWidth: 220 }}>{m.nombre}</td>
+                        <td>{m.creditos}</td>
+                        <td>{m.horas}</td>
+                        <td style={{ minWidth: 180 }}>{m.profesor_nombre || "Sin asignar"}</td>
+                        <td className="text-nowrap">
+                          <button
+                            className="btn btn-sm btn-warning me-2"
+                            onClick={() => {
+                              setSelectedMateria(m);
+                              setModalEditOpen(true);
+                            }}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => {
+                              setSelectedForDelete(m);
+                              setModalDeleteOpen(true);
+                            }}
+                            disabled={!materias.find((mat) => mat.id === m.id)}
+                          >
+                            Eliminar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="card-footer bg-light border-0">
+            <small className="text-muted">
+              Consejo: arrastra horizontalmente para ver todas las columnas en pantallas pequeñas.
+            </small>
+          </div>
+        </div>
       </div>
 
       {/* Modales controlados */}

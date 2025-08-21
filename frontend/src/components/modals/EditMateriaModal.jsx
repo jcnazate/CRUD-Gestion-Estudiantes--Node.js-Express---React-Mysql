@@ -1,156 +1,157 @@
-// frontend/src/components/modals/EditMateriaModal.jsx
-import React, { useEffect, useState, useMemo } from "react";
+// frontend/src/components/modals/EditUserModal.jsx
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../lib/api";
 
-function EditMateriaModal({ open, onClose, onEdit, materia, profesores = [] }) {
-  const [form, setForm] = useState({
-    nombre: "",
-    creditos: "",
-    horas: "",
-    profesor_id: "",
-  });
+function EditUserModal({ user, onUpdated, onClose }) {
   const [loading, setLoading] = useState(false);
+  const overlayRef = useRef(null);
 
-  // Validación
-  const [errors, setErrors] = useState({});
-  const [touched, setTouched] = useState({});
+  const [form, setForm] = useState({
+    nombreCompleto: "",
+    fechaNacimiento: "",
+    email: "",
+    telefono: "",
+    matricula: "",
+    carrera: "",
+    anioSemestre: "",
+    promedio: "",
+    estado: "activo",
+    fechaIngreso: "",
+    fechaEgreso: "",
+    direccion: "",
+  });
 
-  const reNombre = /^[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ0-9\s'.()-]*$/;
+  const original = useMemo(
+    () => ({
+      id: user?.id,
+      nombre_completo: user?.nombre_completo ?? "",
+      fecha_nacimiento: user?.fecha_nacimiento ?? "",
+      email: user?.email ?? "",
+      telefono: user?.telefono ?? "",
+      matricula: user?.matricula ?? "",
+      carrera: user?.carrera ?? "",
+      anio_semestre: user?.anio_semestre ?? "",
+      promedio: user?.promedio ?? "",
+      estado: user?.estado ?? "activo",
+      fecha_ingreso: user?.fecha_ingreso ?? "",
+      fecha_egreso: user?.fecha_egreso ?? "",
+      direccion: user?.direccion ?? "",
+    }),
+    [user]
+  );
 
-  // precargar datos al abrir
   useEffect(() => {
-    if (open && materia) {
-      setForm({
-        nombre: materia.nombre ?? "",
-        creditos: String(materia.creditos ?? ""),
-        horas: String(materia.horas ?? ""),
-        profesor_id: materia.profesor_id ?? "",
-      });
-      setErrors({});
-      setTouched({});
-    }
-  }, [open, materia]);
-
-  // bloquear scroll del body cuando el modal esté abierto
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
-
-  const validateField = (name, value) => {
-    switch (name) {
-      case "nombre":
-        if (!value?.trim()) return "El nombre es obligatorio.";
-        if (!reNombre.test(value.trim()))
-          return "Debe iniciar con mayúscula. Se permiten letras, números y espacios.";
-        return "";
-      case "creditos":
-        if (!value) return "Créditos obligatorios.";
-        if (parseInt(value, 10) < 1) return "Debe ser un entero ≥ 1.";
-        return "";
-      case "horas":
-        if (!value) return "Horas obligatorias.";
-        if (parseInt(value, 10) < 1) return "Debe ser un entero ≥ 1.";
-        return "";
-      default:
-        return "";
-    }
-  };
-
-  const validateAll = (showAll = false) => {
-    const newErrors = {};
-    Object.entries(form).forEach(([k, v]) => {
-      const msg = validateField(k, v);
-      if (msg) newErrors[k] = msg;
+    if (!user) return;
+    setForm({
+      nombreCompleto: original.nombre_completo,
+      fechaNacimiento: (original.fecha_nacimiento || "").slice(0, 10),
+      email: original.email,
+      telefono: original.telefono,
+      matricula: original.matricula,
+      carrera: original.carrera,
+      anioSemestre: original.anio_semestre,
+      promedio: original.promedio,
+      estado: original.estado || "activo",
+      fechaIngreso: (original.fecha_ingreso || "").slice(0, 10),
+      fechaEgreso: (original.fecha_egreso || "").slice(0, 10),
+      direccion: original.direccion,
     });
-    if (showAll) {
-      const allTouched = {};
-      Object.keys(form).forEach((k) => (allTouched[k] = true));
-      setTouched((t) => ({ ...t, ...allTouched }));
-    }
-    setErrors(newErrors);
-    return newErrors;
+  }, [original, user]);
+
+  // Cerrar modal de forma segura
+  const handleClose = () => {
+    if (loading) return;
+    onClose?.(); // el padre debe poner selectedUser = null
   };
 
-  const isFormValid = useMemo(() => {
-    const errs = validateAll(false);
-    return Object.keys(errs).length === 0;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form]);
+  // Bloquear scroll + ESC + click fuera
+  useEffect(() => {
+    if (!user) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
 
-  if (!open) return null;
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
-  };
-
-  const handleBlur = (e) => {
-    const { name, value } = e.target;
-    setTouched((t) => ({ ...t, [name]: true }));
-    const msg = validateField(name, value);
-    setErrors((prev) => ({ ...prev, [name]: msg || undefined }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const errs = validateAll(true);
-    if (Object.keys(errs).length > 0) {
-      toast.error("Corrige los errores antes de continuar.");
-      return;
-    }
-
-    if (!materia?.id) {
-      toast.error("ID de la materia no válido.");
-      return;
-    }
-
-    const payload = {
-      nombre: form.nombre.trim(),
-      creditos: parseInt(form.creditos, 10),
-      horas: parseInt(form.horas, 10),
-      profesor_id: form.profesor_id ? Number(form.profesor_id) : null,
+    const onKey = (e) => e.key === "Escape" && handleClose();
+    const onOverlay = (e) => {
+      if (e.target === e.currentTarget) handleClose();
     };
+
+    document.addEventListener("keydown", onKey);
+    const el = overlayRef.current;
+    el?.addEventListener("mousedown", onOverlay);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKey);
+      el?.removeEventListener("mousedown", onOverlay);
+    };
+  }, [user]); // eslint-disable-line
+
+  const onChange = (key) => (e) =>
+    setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const handleSave = async () => {
+    if (!original.id) {
+      toast.error("No hay usuario seleccionado.");
+      return;
+    }
+    const updates = {};
+    const map = [
+      ["nombreCompleto", "nombre_completo"],
+      ["fechaNacimiento", "fecha_nacimiento"],
+      ["email", "email"],
+      ["telefono", "telefono"],
+      ["matricula", "matricula"],
+      ["carrera", "carrera"],
+      ["anioSemestre", "anio_semestre"],
+      ["promedio", "promedio"],
+      ["estado", "estado"],
+      ["fechaIngreso", "fecha_ingreso"],
+      ["fechaEgreso", "fecha_egreso"],
+      ["direccion", "direccion"],
+    ];
+
+    for (const [kForm, kApi] of map) {
+      const newVal = form[kForm] ?? "";
+      const oldVal = original[kApi] ?? "";
+      if (String(newVal) !== String(oldVal)) {
+        updates[kApi] = newVal === "" ? null : newVal;
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      toast.info("No hay cambios para guardar.");
+      return;
+    }
 
     try {
       setLoading(true);
-      const res = await api.patch(`/materias/${materia.id}`, payload);
-      let updated = res?.data || { ...materia, ...payload };
-
-      if (!updated.profesor_nombre) {
-        const p = profesores?.find((x) => x.id === updated.profesor_id);
-        updated.profesor_nombre = p ? p.nombres : null;
-      }
-
-      onEdit?.(materia.id, updated);
-      onClose?.();
-      toast.success("Materia actualizada");
-    } catch (e) {
-      const msg = e?.response?.data?.message || "Error al editar materia";
+      const res = await api.patch(`/users/${original.id}`, updates);
+      toast.success("Estudiante actualizado.");
+      const merged = { ...user, ...updates, ...(res?.data || {}) };
+      onUpdated?.(original.id, merged);
+      handleClose();
+    } catch (err) {
+      console.error("Error guardando cambios:", err);
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data ||
+        "Error guardando cambios.";
       toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const invalid = (field) => touched[field] && errors[field];
-
-  const handleOverlayClick = (e) => {
-    if (e.target === e.currentTarget && !loading) onClose?.();
-  };
+  if (!user) return null;
 
   return (
     <div
+      ref={overlayRef}
       className="modal show d-block"
       tabIndex="-1"
       role="dialog"
       aria-modal="true"
-      onMouseDown={handleOverlayClick}
       style={{
         position: "fixed",
         inset: 0,
@@ -161,9 +162,8 @@ function EditMateriaModal({ open, onClose, onEdit, materia, profesores = [] }) {
         zIndex: 1050,
       }}
     >
-      <div className="modal-dialog modal-dialog-centered" role="document">
+      <div className="modal-dialog modal-dialog-centered modal-lg">
         <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-          {/* Header con gradiente */}
           <div
             className="modal-header border-0"
             style={{
@@ -172,117 +172,192 @@ function EditMateriaModal({ open, onClose, onEdit, materia, profesores = [] }) {
               color: "white",
             }}
           >
-            <h1 className="modal-title fs-5 mb-0">
-              <b>Editar materia</b>
-            </h1>
+            <div>
+              <h1 className="modal-title fs-5 mb-1">
+                <b>Editar estudiante</b>
+              </h1>
+              <small className="opacity-75">
+                ID: <b>{original.id ?? "-"}</b>
+              </small>
+            </div>
             <button
               type="button"
               className="btn-close btn-close-white"
-              aria-label="Cerrar"
-              onClick={onClose}
+              onClick={handleClose}
+              aria-label="Close"
               disabled={loading}
             />
           </div>
 
-          {/* Body */}
           <div className="modal-body bg-light">
-            <form onSubmit={handleSubmit}>
-              {/* NOMBRE */}
-              <div className="mb-3">
-                <label className="form-label fw-semibold">Nombre *</label>
-                <div className="input-group">
-                  <span className="input-group-text">📘</span>
-                  <input
-                    type="text"
-                    className={`form-control ${invalid("nombre") ? "is-invalid" : ""}`}
-                    name="nombre"
-                    value={form.nombre}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    required
-                  />
-                  {invalid("nombre") && (
-                    <div className="invalid-feedback">{errors.nombre}</div>
-                  )}
+            <div className="row g-3">
+              <div className="col-md-6">
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-dark">Nombre Completo</label>
+                  <div className="input-group">
+                    <span className="input-group-text">👤</span>
+                    <input
+                      className="form-control"
+                      value={form.nombreCompleto}
+                      onChange={onChange("nombreCompleto")}
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-dark">Fecha de Nacimiento</label>
+                  <div className="input-group">
+                    <span className="input-group-text">📅</span>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={form.fechaNacimiento}
+                      onChange={onChange("fechaNacimiento")}
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-dark">Email</label>
+                  <div className="input-group">
+                    <span className="input-group-text">📧</span>
+                    <input
+                      type="email"
+                      className="form-control"
+                      value={form.email}
+                      onChange={onChange("email")}
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-dark">Teléfono</label>
+                  <div className="input-group">
+                    <span className="input-group-text">📞</span>
+                    <input
+                      className="form-control"
+                      value={form.telefono}
+                      onChange={onChange("telefono")}
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-dark">Matrícula</label>
+                  <div className="input-group">
+                    <span className="input-group-text">🎓</span>
+                    <input
+                      className="form-control"
+                      value={form.matricula}
+                      onChange={onChange("matricula")}
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-dark">Carrera</label>
+                  <div className="input-group">
+                    <span className="input-group-text">📚</span>
+                    <input
+                      className="form-control"
+                      value={form.carrera}
+                      onChange={onChange("carrera")}
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* CRÉDITOS */}
-              <div className="mb-3">
-                <label className="form-label fw-semibold">Créditos *</label>
-                <div className="input-group">
-                  <span className="input-group-text">🎓</span>
-                  <input
-                    type="number"
-                    className={`form-control ${invalid("creditos") ? "is-invalid" : ""}`}
-                    name="creditos"
-                    value={form.creditos}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    min={1}
-                    required
-                  />
-                  {invalid("creditos") && (
-                    <div className="invalid-feedback">{errors.creditos}</div>
-                  )}
+              <div className="col-md-6">
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-dark">Año/Semestre</label>
+                  <div className="input-group">
+                    <span className="input-group-text">📆</span>
+                    <input
+                      className="form-control"
+                      value={form.anioSemestre}
+                      onChange={onChange("anioSemestre")}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* HORAS */}
-              <div className="mb-3">
-                <label className="form-label fw-semibold">Horas *</label>
-                <div className="input-group">
-                  <span className="input-group-text">⏱️</span>
-                  <input
-                    type="number"
-                    className={`form-control ${invalid("horas") ? "is-invalid" : ""}`}
-                    name="horas"
-                    value={form.horas}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    min={1}
-                    required
-                  />
-                  {invalid("horas") && (
-                    <div className="invalid-feedback">{errors.horas}</div>
-                  )}
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-dark">Promedio</label>
+                  <div className="input-group">
+                    <span className="input-group-text">📊</span>
+                    <input
+                      className="form-control"
+                      value={form.promedio}
+                      onChange={onChange("promedio")}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* PROFESOR */}
-              <div className="mb-1">
-                <label className="form-label fw-semibold">Profesor</label>
-                <div className="input-group">
-                  <span className="input-group-text">👨🏽‍🏫</span>
-                  <select
-                    className="form-select"
-                    name="profesor_id"
-                    value={form.profesor_id}
-                    onChange={handleChange}
-                  >
-                    <option value="">Sin profesor</option>
-                    {profesores.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nombres} - {p.cedula}
-                      </option>
-                    ))}
-                  </select>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-dark">Estado</label>
+                  <div className="input-group">
+                    <span className="input-group-text">🔄</span>
+                    <select
+                      className="form-select"
+                      value={form.estado}
+                      onChange={onChange("estado")}
+                    >
+                      <option value="activo">Activo</option>
+                      <option value="inactivo">Inactivo</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-dark">Fecha de Ingreso</label>
+                  <div className="input-group">
+                    <span className="input-group-text">📥</span>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={form.fechaIngreso}
+                      onChange={onChange("fechaIngreso")}
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-dark">Fecha de Egreso</label>
+                  <div className="input-group">
+                    <span className="input-group-text">📤</span>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={form.fechaEgreso}
+                      onChange={onChange("fechaEgreso")}
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-dark">Dirección</label>
+                  <div className="input-group">
+                    <span className="input-group-text">📍</span>
+                    <input
+                      className="form-control"
+                      value={form.direccion}
+                      onChange={onChange("direccion")}
+                    />
+                  </div>
                 </div>
               </div>
-            </form>
+            </div>
           </div>
 
-          {/* Footer */}
           <div className="modal-footer bg-light border-0 pt-0">
             <div className="d-flex w-100 justify-content-between align-items-center">
               <span className="small text-muted">
-                {loading ? "Procesando…" : "Campos obligatorios (*)"}
+                {loading ? "Procesando…" : "Modifica los campos necesarios"}
               </span>
               <div className="d-flex gap-2">
                 <button
                   type="button"
                   className="btn btn-outline-secondary"
-                  onClick={onClose}
+                  onClick={handleClose}
                   disabled={loading}
                 >
                   Cancelar
@@ -290,20 +365,19 @@ function EditMateriaModal({ open, onClose, onEdit, materia, profesores = [] }) {
                 <button
                   type="button"
                   className="btn btn-primary"
-                  onClick={handleSubmit}
-                  disabled={loading || !isFormValid}
+                  onClick={handleSave}
+                  disabled={loading}
                 >
-                  <b>{loading ? "Guardando..." : "Guardar"}</b>
+                  <b>{loading ? "Guardando..." : "Guardar cambios"}</b>
                 </button>
               </div>
             </div>
           </div>
 
-          <div className="py-1" />
         </div>
       </div>
     </div>
   );
 }
 
-export default EditMateriaModal;
+export default EditUserModal;

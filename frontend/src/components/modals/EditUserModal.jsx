@@ -1,9 +1,9 @@
 // frontend/src/components/modals/EditUserModal.jsx
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { api } from "../../lib/api"; // ✅ instancia axios con Authorization
+import { api } from "../../lib/api";
 
-function EditUserModal({ user, onUpdated }) {
+function EditUserModal({ user, onUpdated,onClose }) {
   const [loading, setLoading] = useState(false);
 
   // estado del form
@@ -120,161 +120,238 @@ function EditUserModal({ user, onUpdated }) {
     }
   };
 
+  if (!user) return null;
+
   return (
     <div
-      className="modal fade"
-      id="editUserModal"
+      className="modal show d-block"
       tabIndex="-1"
-      aria-labelledby="EditUserModalLabel"
-      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      style={{
+        position: "fixed",
+        inset: 0,
+        display: "grid",
+        placeItems: "center",
+        backgroundColor: "rgba(0,0,0,0.35)",
+        backdropFilter: "blur(2px)",
+        zIndex: 1050
+      }}
     >
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h1 className="modal-title fs-5" id="EditUserModalLabel">
-              <b>Editar estudiante</b>
-            </h1>
-            <button
-              type="button"
-              className="btn-close"
-              data-bs-dismiss="modal"
-              aria-label="Close"
-            />
-          </div>
-
-          <div className="modal-body">
-            <div className="mb-2">
-              <small>
+      <div className="modal-dialog modal-dialog-centered modal-lg">
+        <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+          {/* Header estilizado */}
+          <div
+            className="modal-header border-0"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(13,110,253,.95), rgba(32,201,151,.95))",
+              color: "white"
+            }}
+          >
+            <div>
+              <h1 className="modal-title fs-5 mb-1">
+                <b>Editar estudiante</b>
+              </h1>
+              <small className="opacity-75">
                 ID: <b>{original.id ?? "-"}</b>
               </small>
             </div>
+            <button
+              type="button"
+              className="btn-close btn-close-white"
+              aria-label="Close"
+              onClick={onClose}
+              disabled={loading}
+            />
+          </div>
 
-            <div className="mb-3">
-              <label className="form-label">Nombre Completo</label>
-              <input
-                className="form-control"
-                value={form.nombreCompleto}
-                onChange={onChange("nombreCompleto")}
-              />
-            </div>
+          <div className="modal-body bg-light">
+            <div className="row g-3">
+              {/* Columna izquierda */}
+              <div className="col-md-6">
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Nombre Completo</label>
+                  <div className="input-group">
+                    <span className="input-group-text">👤</span>
+                    <input
+                      className="form-control"
+                      value={form.nombreCompleto}
+                      onChange={onChange("nombreCompleto")}
+                    />
+                  </div>
+                </div>
 
-            <div className="mb-3">
-              <label className="form-label">Fecha de Nacimiento</label>
-              <input
-                type="date"
-                className="form-control"
-                value={form.fechaNacimiento}
-                onChange={onChange("fechaNacimiento")}
-              />
-            </div>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Fecha de Nacimiento</label>
+                  <div className="input-group">
+                    <span className="input-group-text">📅</span>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={form.fechaNacimiento}
+                      onChange={onChange("fechaNacimiento")}
+                    />
+                  </div>
+                </div>
 
-            <div className="mb-3">
-              <label className="form-label">Email</label>
-              <input
-                type="email"
-                className="form-control"
-                value={form.email}
-                onChange={onChange("email")}
-              />
-            </div>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Email</label>
+                  <div className="input-group">
+                    <span className="input-group-text">📧</span>
+                    <input
+                      type="email"
+                      className="form-control"
+                      value={form.email}
+                      onChange={onChange("email")}
+                    />
+                  </div>
+                </div>
 
-            <div className="mb-3">
-              <label className="form-label">Teléfono</label>
-              <input
-                className="form-control"
-                value={form.telefono}
-                onChange={onChange("telefono")}
-              />
-            </div>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Teléfono</label>
+                  <div className="input-group">
+                    <span className="input-group-text">📞</span>
+                    <input
+                      className="form-control"
+                      value={form.telefono}
+                      onChange={onChange("telefono")}
+                    />
+                  </div>
+                </div>
 
-            <div className="mb-3">
-              <label className="form-label">Matrícula</label>
-              <input
-                className="form-control"
-                value={form.matricula}
-                onChange={onChange("matricula")}
-              />
-            </div>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Matrícula</label>
+                  <div className="input-group">
+                    <span className="input-group-text">🎓</span>
+                    <input
+                      className="form-control"
+                      value={form.matricula}
+                      onChange={onChange("matricula")}
+                    />
+                  </div>
+                </div>
 
-            <div className="mb-3">
-              <label className="form-label">Carrera</label>
-              <input
-                className="form-control"
-                value={form.carrera}
-                onChange={onChange("carrera")}
-              />
-            </div>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Carrera</label>
+                  <div className="input-group">
+                    <span className="input-group-text">📚</span>
+                    <input
+                      className="form-control"
+                      value={form.carrera}
+                      onChange={onChange("carrera")}
+                    />
+                  </div>
+                </div>
+              </div>
 
-            <div className="mb-3">
-              <label className="form-label">Año/Semestre</label>
-              <input
-                className="form-control"
-                value={form.anioSemestre}
-                onChange={onChange("anioSemestre")}
-              />
-            </div>
+              {/* Columna derecha */}
+              <div className="col-md-6">
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Año/Semestre</label>
+                  <div className="input-group">
+                    <span className="input-group-text">📆</span>
+                    <input
+                      className="form-control"
+                      value={form.anioSemestre}
+                      onChange={onChange("anioSemestre")}
+                    />
+                  </div>
+                </div>
 
-            <div className="mb-3">
-              <label className="form-label">Promedio</label>
-              <input
-                className="form-control"
-                value={form.promedio}
-                onChange={onChange("promedio")}
-              />
-            </div>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Promedio</label>
+                  <div className="input-group">
+                    <span className="input-group-text">📊</span>
+                    <input
+                      className="form-control"
+                      value={form.promedio}
+                      onChange={onChange("promedio")}
+                    />
+                  </div>
+                </div>
 
-            <div className="mb-3">
-              <label className="form-label">Estado</label>
-              <select
-                className="form-select"
-                value={form.estado}
-                onChange={onChange("estado")}
-              >
-                <option value="activo">Activo</option>
-                <option value="inactivo">Inactivo</option>
-              </select>
-            </div>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Estado</label>
+                  <div className="input-group">
+                    <span className="input-group-text">🔄</span>
+                    <select
+                      className="form-select"
+                      value={form.estado}
+                      onChange={onChange("estado")}
+                    >
+                      <option value="activo">Activo</option>
+                      <option value="inactivo">Inactivo</option>
+                    </select>
+                  </div>
+                </div>
 
-            <div className="mb-3">
-              <label className="form-label">Fecha de Ingreso</label>
-              <input
-                type="date"
-                className="form-control"
-                value={form.fechaIngreso}
-                onChange={onChange("fechaIngreso")}
-              />
-            </div>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Fecha de Ingreso</label>
+                  <div className="input-group">
+                    <span className="input-group-text">📥</span>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={form.fechaIngreso}
+                      onChange={onChange("fechaIngreso")}
+                    />
+                  </div>
+                </div>
 
-            <div className="mb-3">
-              <label className="form-label">Fecha de Egreso</label>
-              <input
-                type="date"
-                className="form-control"
-                value={form.fechaEgreso}
-                onChange={onChange("fechaEgreso")}
-              />
-            </div>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Fecha de Egreso</label>
+                  <div className="input-group">
+                    <span className="input-group-text">📤</span>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={form.fechaEgreso}
+                      onChange={onChange("fechaEgreso")}
+                    />
+                  </div>
+                </div>
 
-            <div className="mb-3">
-              <label className="form-label">Dirección</label>
-              <input
-                className="form-control"
-                value={form.direccion}
-                onChange={onChange("direccion")}
-              />
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Dirección</label>
+                  <div className="input-group">
+                    <span className="input-group-text">📍</span>
+                    <input
+                      className="form-control"
+                      value={form.direccion}
+                      onChange={onChange("direccion")}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button
-              type="button"
-              className="btn btn-warning"
-              onClick={handleSave}
-              data-bs-dismiss={loading ? undefined : "modal"}
-              disabled={loading}
-            >
-              <b>{loading ? "Guardando..." : "Guardar cambios"}</b>
-            </button>
+          {/* Footer con acciones claras */}
+          <div className="modal-footer bg-light border-0 pt-0">
+            <div className="d-flex w-100 justify-content-between align-items-center">
+              <span className="small text-muted">
+                {loading ? "Procesando…" : "Modifica los campos necesarios"}
+              </span>
+              <div className="d-flex gap-2">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={onClose}
+                  disabled={loading}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleSave}
+                  disabled={loading}
+                >
+                  <b>{loading ? "Guardando..." : "Guardar cambios"}</b>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

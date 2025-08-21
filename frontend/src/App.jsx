@@ -9,16 +9,18 @@ import PrivateRoute from "./components/PrivateRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import AsignarMateriaEstudiante from "./components/AsignarMateriaEstudiante";
 import "./styles/App.css";
-
+import "./styles/Navigation.css"; 
 function Navigation() {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) return null;
   return (
-    <nav style={{ display: "flex", gap: 16, margin: 16 }}>
-      <Link to="/">Estudiantes</Link>
-      <Link to="/profesores">Profesores</Link>
-      <Link to="/materias">Materias</Link>
-      <Link to="/asignar-materias">Asignar Materias</Link>
+    <nav className="custom-nav shadow-sm">
+      <div className="nav-container">
+        <Link className="nav-link" to="/">Estudiantes</Link>
+        <Link className="nav-link" to="/profesores">Profesores</Link>
+        <Link className="nav-link" to="/materias">Materias</Link>
+        <Link className="nav-link" to="/asignar-materias">Asignar Materias</Link>
+      </div>
     </nav>
   );
 }

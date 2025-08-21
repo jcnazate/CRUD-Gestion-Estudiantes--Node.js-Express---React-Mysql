@@ -120,17 +120,48 @@ router.patch("/users/:id", requireAuth, async (req, res) => {
 });
 
 // ---- ELIMINAR (protegido) ----
+// ---- ELIMINAR (protegido) ----
 router.delete("/users/:id", requireAuth, async (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (!id) return res.status(400).json({ message: "ID inválido" });
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id <= 0) {
+    return res.status(400).json({ message: "ID inválido" });
+  }
+
   try {
-    const [row] = await req.pool.query(`SELECT id FROM ${process.env.DB_TABLENAME} WHERE id = ?`, [id]);
-    if (!row.length) return res.status(404).json({ message: "No existe" });
-    await req.pool.query(`DELETE FROM ${process.env.DB_TABLENAME} WHERE id = ?`, [id]);
-    res.json({ ok: true });
+    // Verificar si tiene materias asignadas
+    const [[{ count }]] = await req.pool.query(
+      "SELECT COUNT(*) AS count FROM estudiante_materia WHERE estudiante_id = ?",
+      [id]
+    );
+
+    if (count > 0) {
+      const [est] = await req.pool.query(
+        `SELECT nombre_completo FROM ${process.env.DB_TABLENAME} WHERE id = ?`,
+        [id]
+      );
+      const nombre = est?.[0]?.nombre_completo || "El estudiante";
+      return res.status(409).json({
+        code: "STUDENT_HAS_SUBJECTS",
+        message: "No se puede eliminar: el estudiante tiene materias asignadas.",
+        count,
+        nombre,
+      });
+    }
+
+    // Si no tiene asignaciones, procedemos a borrar
+    const [del] = await req.pool.query(
+      `DELETE FROM ${process.env.DB_TABLENAME} WHERE id = ?`,
+      [id]
+    );
+
+    if (del.affectedRows === 0) {
+      return res.status(404).json({ message: "No existe" });
+    }
+
+    return res.json({ ok: true, id });
   } catch (err) {
-    console.error("Error deleting data:", err);
-    res.status(500).send("Internal server error");
+    console.error("Error deleting user:", err);
+    return res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -424,6 +455,7 @@ router.patch("/materias/:id", requireAuth, async (req, res) => {
 });
 
 // ---- ELIMINAR MATERIA ----
+// ---- ELIMINAR MATERIA ----
 router.delete("/materias/:id", requireAuth, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id) || id <= 0) {
@@ -431,28 +463,57 @@ router.delete("/materias/:id", requireAuth, async (req, res) => {
   }
 
   try {
-    console.log("[DELETE /materias/:id] id:", id);
+    // 1) ¿Existe la materia?
+    const [matRows] = await req.pool.query(
+      "SELECT id, nombre FROM materias WHERE id = ?",
+      [id]
+    );
+    if (!matRows.length) {
+      return res.status(404).json({ message: "No existe" });
+    }
+    const materia = matRows[0];
 
-    // Borra directamente y revisa affectedRows
-    const [del] = await req.pool.query("DELETE FROM materias WHERE id = ?", [id]);
-    console.log("[DELETE /materias/:id] affectedRows:", del?.affectedRows);
+    // 2) ¿Tiene asignaciones?
+    const [countRows] = await req.pool.query(
+      "SELECT COUNT(*) AS cnt FROM estudiante_materia WHERE materia_id = ?",
+      [id]
+    );
+    const count = countRows[0]?.cnt ?? 0;
 
+    if (count > 0) {
+      // -> Bloquear eliminación
+      return res.status(409).json({
+        code: "MATERIA_HAS_ASSIGNMENTS",
+        message:
+          "La materia tiene estudiantes asignados y no se puede eliminar.",
+        count,
+        materia, // {id, nombre}
+      });
+    }
+
+    // 3) Borrar
+    const [del] = await req.pool.query(
+      "DELETE FROM materias WHERE id = ?",
+      [id]
+    );
     if (!del || del.affectedRows === 0) {
-      // No se borró nada -> no existía
       return res.status(404).json({ message: "No existe" });
     }
 
     return res.json({ ok: true, id });
   } catch (err) {
-    // Si hay FK en estudiante_materia te daría un error tipo ER_ROW_IS_REFERENCED_2
     console.error("Error deleting materia:", err);
-    // Podrías mapear FK para dar un mensaje más claro:
+    // Si hubiera una FK que lo impida, también devolvemos 409
     if (err?.code === "ER_ROW_IS_REFERENCED_2" || err?.errno === 1451) {
-      return res.status(409).json({ message: "No se puede eliminar: está referenciada." });
+      return res.status(409).json({
+        code: "MATERIA_REFERENCED",
+        message: "No se puede eliminar: está referenciada.",
+      });
     }
-    return res.status(500).send("Internal server error");
+    return res.status(500).json({ message: "Internal server error" });
   }
 });
+
 // GET /estudiantes - Obtener todos los estudiantes
 router.get("/estudiantes", requireAuth, async (req, res) => {
   try {
@@ -494,43 +555,54 @@ router.get("/estudiantes/:id/materias", requireAuth, async (req, res) => {
 
 // POST /estudiantes/:id/materias - Asignar una materia a un estudiante
 router.post("/estudiantes/:id/materias", requireAuth, async (req, res) => {
-  const id = Number(req.params.id);
-  const { materia_id } = req.body;
-  if (!Number.isFinite(id) || id <= 0 || !Number.isFinite(materia_id) || materia_id <= 0) {
+  const estudianteId = Number(req.params.id);
+  const materiaId = Number(req.body?.materia_id);
+
+  if (!Number.isFinite(estudianteId) || estudianteId <= 0 ||
+      !Number.isFinite(materiaId)   || materiaId   <= 0) {
     return res.status(400).json({ message: "ID de estudiante o materia inválido" });
   }
 
   try {
-    console.log("[POST /estudiantes/:id/materias] Solicitud recibida, estudiante_id:", id, "materia_id:", materia_id);
-    // Verificar que el estudiante y la materia existan
-    const [estudiante] = await req.pool.query(`SELECT id FROM estudiantes WHERE id = ?`, [id]);
-    const [materia] = await req.pool.query(`SELECT id FROM materias WHERE id = ?`, [materia_id]);
-    if (!estudiante.length || !materia.length) {
+    console.log("[POST /estudiantes/:id/materias]",
+      { estudianteId, materiaId, body: req.body });
+
+    // Verifica existencia
+    const [[est]]   = await req.pool.query("SELECT id FROM estudiantes WHERE id = ?", [estudianteId]);
+    const [[mat]]   = await req.pool.query("SELECT id FROM materias    WHERE id = ?", [materiaId]);
+    if (!est || !mat) {
       return res.status(404).json({ message: "Estudiante o materia no encontrado" });
     }
 
-    // Verificar que la materia no esté ya asignada
-    const [existing] = await req.pool.query(
-      `SELECT * FROM estudiante_materia WHERE estudiante_id = ? AND materia_id = ?`,
-      [id, materia_id]
+    // Evita duplicados
+    const [dup] = await req.pool.query(
+      "SELECT 1 FROM estudiante_materia WHERE estudiante_id = ? AND materia_id = ?",
+      [estudianteId, materiaId]
     );
-    if (existing.length) {
-      return res.status(409).json({ message: "La materia ya está asignada a este estudiante" });
-    }
+    if (dup.length) return res.status(409).json({ message: "La materia ya está asignada a este estudiante" });
 
-    await req.pool.query(
-      `INSERT INTO estudiante_materia (estudiante_id, materia_id) VALUES (?, ?)`,
-      [id, materia_id]
+    // Inserta
+    const [ins] = await req.pool.query(
+      "INSERT INTO estudiante_materia (estudiante_id, materia_id) VALUES (?, ?)",
+      [estudianteId, materiaId]
     );
-    res.status(201).json({ ok: true });
+
+    return res.status(201).json({ ok: true, id: ins.insertId });
   } catch (err) {
-    console.error("[POST /estudiantes/:id/materias] Error:", err);
+    // 🔎 LOG DETALLADO
+    console.error("[POST /estudiantes/:id/materias] ERROR",
+      { code: err?.code, errno: err?.errno, sqlMessage: err?.sqlMessage, sql: err?.sql });
+
     if (err?.code === "ER_DUP_ENTRY") {
       return res.status(409).json({ message: "La materia ya está asignada a este estudiante" });
     }
-    res.status(500).json({ message: "Error interno del servidor" });
+    if (err?.code === "ER_NO_REFERENCED_ROW_2" || err?.errno === 1452) {
+      return res.status(409).json({ message: "FK inválida: estudiante o materia no existen" });
+    }
+    return res.status(500).json({ message: "Error interno del servidor" });
   }
 });
+
 
 // DELETE /estudiantes/:id/materias/:materia_id - Quitar una materia asignada a un estudiante
 router.delete("/estudiantes/:id/materias/:materia_id", requireAuth, async (req, res) => {

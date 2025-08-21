@@ -44,60 +44,94 @@ function ProfesoresTable() {
   return (
     <>
       <Toaster richColors closeButton />
-      <div className="container mt-5">
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h1 className="mb-0">Gestión de Profesores</h1>
-          <button
-            className="btn btn-primary btn-sm shadow"
-            onClick={() => setModalCreateOpen(true)} // Abrir modal de creación
+      
+      <div className="container py-4">
+        <div className="card border-0 shadow-lg rounded-4 overflow-hidden">
+          {/* Header con gradiente */}
+          <div
+            className="p-3 d-flex justify-content-between align-items-center"
+            style={{
+              background: "linear-gradient(135deg, rgba(13,110,253,.95), rgba(32,201,151,.95))",
+              color: "white",
+            }}
           >
-            Crear Profesores
-          </button>
-        </div>
+            <div>
+              <h3 className="mb-0">Gestión de Profesores</h3>
+              <small className="opacity-75">
+                Crea, edita y elimina registros de profesores.
+              </small>
+            </div>
 
-        {profesores.length === 0 ? (
-          <h3>No se encontraron profesores en la Base De Datos</h3>
-        ) : (
-          <table className="table table-bordered table-hover">
-            <thead className="thead-dark">
-              <tr>
-                <th>Id</th>
-                <th>Nombres</th>
-                <th>Cédula</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {profesores.map((p) => (
-                <tr key={p.id}>
-                  <td>{p.id}</td>
-                  <td>{p.nombres}</td>
-                  <td>{p.cedula}</td>
-                  <td className="text-nowrap">
-                    <button
-                      className="btn btn-sm btn-warning me-2"
-                      onClick={() => {
-                        setSelectedProfesor(p);
-                        setModalEditOpen(true); // Abrir modal de edición
-                      }}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      className="btn btn-sm btn-danger"
-                      onClick={() => {
-                        setSelectedForDelete(p);
-                        setModalDeleteOpen(true); // Abrir modal de eliminación
-                      }}
-                    >
-                      Eliminar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+            <div>
+              <button
+                className="btn btn-success"
+                onClick={() => setModalCreateOpen(true)}
+              >
+                <b>Crear profesor</b>
+              </button>
+            </div>
+          </div>
+
+          <div className="card-body bg-light">
+            {profesores.length === 0 ? (
+              <h5 className="text-muted">No se encontraron profesores en la Base de Datos</h5>
+            ) : (
+              <div
+                className="table-responsive"
+                style={{
+                  overflowX: "auto",
+                  WebkitOverflowScrolling: "touch",
+                }}
+              >
+                <table className="table table-bordered table-hover mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Id</th>
+                      <th>Nombres</th>
+                      <th>Cédula</th>
+                      <th style={{ whiteSpace: "nowrap" }}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {profesores.map((p) => (
+                      <tr key={p.id}>
+                        <td>{p.id}</td>
+                        <td style={{ minWidth: 220 }}>{p.nombres}</td>
+                        <td>{p.cedula}</td>
+                        <td className="text-nowrap">
+                          <button
+                            className="btn btn-sm btn-warning me-2"
+                            onClick={() => {
+                              setSelectedProfesor(p);
+                              setModalEditOpen(true);
+                            }}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => {
+                              setSelectedForDelete(p);
+                              setModalDeleteOpen(true);
+                            }}
+                          >
+                            Eliminar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="card-footer bg-light border-0">
+            <small className="text-muted">
+              Consejo: arrastra horizontalmente para ver todas las columnas en pantallas pequeñas.
+            </small>
+          </div>
+        </div>
       </div>
 
       {/* Modales */}
